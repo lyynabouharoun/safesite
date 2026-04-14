@@ -1,0 +1,13 @@
+services:
+#build AI service from folder /expose port 8001 to your laptop
+  ai-service: 
+    build: ./ai-service
+    ports:
+      - "8001:8001"
+#backend runs on 8000 /backend starts AFTER AI service
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - ai-service
