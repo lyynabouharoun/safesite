@@ -1,78 +1,135 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import axios from "axios";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import Card from "../components/ui/Card";
-import Badge from "../components/ui/Badge";
-
-const ALL_ALERTS = [
-  { id: 1, title: "Motion detected",       camera: "CAM-01", zone: "Zone-A", time: "14:32:01", severity: "HIGH",   status: "Open"     },
-  { id: 2, title: "Unrecognized person",   camera: "CAM-02", zone: "Zone-B", time: "13:15:44", severity: "HIGH",   status: "Open"     },
-  { id: 3, title: "Camera disconnected",   camera: "CAM-04", zone: "Zone-A", time: "12:04:11", severity: "MED",    status: "Resolved" },
-  { id: 4, title: "Night mode triggered",  camera: "CAM-03", zone: "Zone-C", time: "20:00:00", severity: "LOW",    status: "Resolved" },
-  { id: 5, title: "Connection restored",   camera: "CAM-04", zone: "Zone-A", time: "11:02:17", severity: "INFO",   status: "Resolved" },
-];
-
-const SEV_VARIANT = { HIGH: "danger", MED: "warning", LOW: "success", INFO: "purple" };
 
 export default function Alerts() {
-  const [filter, setFilter] = useState("All");
-  const filters = ["All", "Open", "Resolved"];
+  const [alerts, setAlerts] = useState([]);
 
-  const filtered = filter === "All" ? ALL_ALERTS : ALL_ALERTS.filter(a => a.status === filter);
+  useEffect(() => {
+    fetchAlerts();
+  }, []);
+
+  const fetchAlerts = async () => {
+    try {
+      const res = await axios.get("http://127.0.0.1:8000/api/alerts/");
+      setAlerts(res.data.reverse());
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const deleteAlert = async (id) => {
+    try {
+      await axios.delete(`http://127.0.0.1:8000/api/alerts/${id}/`);
+      setAlerts((prev) => prev.filter((a) => a.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const toggleArchive = async (alert) => {
+    try {
+      await axios.patch(`http://127.0.0.1:8000/api/alerts/${alert.id}/`, {
+        archived: !alert.archived,
+      });
+
+      setAlerts((prev) =>
+        prev.map((a) =>
+          a.id === alert.id ? { ...a, archived: !a.archived } : a
+        )
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-medium text-cream">Alert Center</h2>
-          <p className="text-xs font-mono text-cream/30 mt-0.5">
-            {ALL_ALERTS.filter(a => a.status === "Open").length} open · {ALL_ALERTS.filter(a => a.status === "Resolved").length} resolved
-          </p>
-        </div>
-        <div className="flex gap-1">
-          {filters.map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`px-3 py-1.5 rounded-lg font-mono text-xs transition-all ${
-                filter === f
-                  ? "bg-cyan/10 text-cyan border border-cyan/20"
-                  : "text-cream/40 border border-dark-border hover:text-cream"
-              }`}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
-      </div>
+      <h2 className="text-2xl font-bold mb-6 text-blue-200">
+        🚨 Alerts
+      </h2>
 
       <Card>
-        <div className="space-y-2">
-          {filtered.map((alert) => (
-            <div
-              key={alert.id}
-              className={`flex items-center gap-4 p-3 rounded-lg border transition-colors
-                ${alert.status === "Open"
-                  ? "bg-coral/5 border-coral/20 hover:bg-coral/10"
-                  : "bg-dark-base border-dark-border hover:bg-dark-surface"
-                }`}
-            >
-              <div className={`w-1.5 h-10 rounded-full flex-shrink-0 ${
-                alert.severity === "HIGH" ? "bg-coral" :
-                alert.severity === "MED"  ? "bg-yellow-400" :
-                alert.severity === "LOW"  ? "bg-cyan" : "bg-plum-800"
-              }`} />
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left border-b border-blue-900/40">
+              <tr className="text-blue-300/70">
+                <th className="py-3">Type</th>
+                <th>Confidence</th>
+                <th>Timestamp</th>
+                <th>Status</th>
+                <th className="text-right">Actions</th>
+              </tr>
+            </thead>
 
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-cream">{alert.title}</p>
-                <p className="text-xs font-mono text-cream/30 mt-0.5">
-                  {alert.camera} · {alert.zone} · {alert.time}
-                </p>
-              </div>
+            <tbody>
+              {alerts.map((alert) => (
+                <tr
+                  key={alert.id}
+                  className="border-b border-blue-900/20 hover:bg-blue-950/30 transition"
+                >
+                  {/* Type */}
+                  <td className="py-3 font-medium text-white capitalize">
+                    {alert.type.replace("_", " ")}
+                  </td>
 
-              <Badge variant={SEV_VARIANT[alert.severity]}>{alert.severity}</Badge>
-              <Badge variant={alert.status === "Open" ? "danger" : "success"}>{alert.status}</Badge>
-            </div>
-          ))}
+                  {/* Confidence */}
+                  <td>
+                    <span className="px-2 py-1 rounded bg-blue-900/40 text-blue-200 text-xs">
+                      {Math.round(alert.confidence * 100)}%
+                    </span>
+                  </td>
+
+                  {/* Timestamp */}
+                  <td className="text-blue-200/60">
+                    {new Date(alert.timestamp).toLocaleString()}
+                  </td>
+
+                  {/* Status */}
+                  <td>
+                    {alert.archived ? (
+                      <span className="px-2 py-1 text-xs rounded bg-gray-700/50 text-gray-300">
+                        Archived
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 text-xs rounded bg-green-900/30 text-green-300">
+                        Active
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="text-right space-x-2">
+                    <button
+                      onClick={() => toggleArchive(alert)}
+                      className="text-xs px-3 py-1 rounded bg-yellow-900/30 text-yellow-300 hover:bg-yellow-900/50 transition"
+                    >
+                      {alert.archived ? "Unarchive" : "Archive"}
+                    </button>
+
+                    <button
+                      onClick={() => deleteAlert(alert.id)}
+                      className="text-xs px-3 py-1 rounded bg-red-900/30 text-red-300 hover:bg-red-900/50 transition"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+
+              {alerts.length === 0 && (
+                <tr>
+                  <td
+                    colSpan="5"
+                    className="text-center py-6 text-blue-200/50"
+                  >
+                    No alerts found
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </Card>
     </DashboardLayout>

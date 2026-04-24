@@ -1,33 +1,45 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 
 export default function useWebSocket(url) {
-  const ws = useRef(null);
-  const [data, setData] = useState(null);
-  const [connected, setConnected] = useState(false);
+    const [messages, setMessages] = useState([]);
+    const audioRef = useRef(null);
 
-  useEffect(() => {
-    ws.current = new WebSocket(url);
+    useEffect(() => {
+        const socket = new WebSocket(url);
 
-    ws.current.onopen = () => setConnected(true);
+        // 🔊 Prepare audio once
+        audioRef.current = new Audio("/alert.mp3");
 
-    ws.current.onmessage = (event) => {
-      try {
-        setData(JSON.parse(event.data));
-      } catch {
-        setData(event.data);
-      }
-    };
+        socket.onopen = () => {
+            console.log("✅ WebSocket connected");
+        };
 
-    ws.current.onclose = () => setConnected(false);
+        socket.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            console.log("🚨 ALERT:", data);
 
-    return () => ws.current.close();
-  }, [url]);
+            // 🔊 Play sound safely
+            if (audioRef.current) {
+                audioRef.current.currentTime = 0; // restart sound
+                audioRef.current.play().catch(() => {
+                    // browser may block autoplay until user clicks
+                });
+            }
 
-  const send = (msg) => {
-    if (ws.current?.readyState === 1) {
-      ws.current.send(JSON.stringify(msg));
-    }
-  };
+            // 🧠 Keep only last 10 alerts (prevents UI lag later)
+            setMessages((prev) => [data, ...prev.slice(0, 9)]);
+        };
 
-  return { data, connected, send };
+        socket.onerror = (err) => {
+            console.error("❌ WS Error:", err);
+        };
+
+        socket.onclose = () => {
+            console.log("🔌 WebSocket closed");
+        };
+
+        return () => socket.close();
+    }, [url]);
+
+    return messages;
 }

@@ -53,7 +53,7 @@ def process_frame(request):
             async_to_sync(channel_layer.group_send)(
                 "alerts",
                 {
-                    "type": "send_alert",  # goes to consumer method
+                   "type": "alert_message" ,  # goes to consumer method
                     "data": {
                         "id": alert.id,
                         "type": obj_class,
@@ -62,6 +62,7 @@ def process_frame(request):
                     }
                 }
             )
+            print("🔥 SENDING ALERT:", obj_class)
 
     # 🧠 Create event after processing
     event = create_event(camera, created_alerts)

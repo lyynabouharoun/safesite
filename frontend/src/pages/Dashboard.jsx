@@ -3,29 +3,54 @@ import StatsRow from "../components/dashboard/StatsRow";
 import LiveFeed from "../components/dashboard/LiveFeed";
 import AlertPanel from "../components/dashboard/AlertPanel";
 import HistoryTable from "../components/dashboard/HistoryTable";
+import useWebSocket from "../hooks/useWebSocket";
 
 export default function Dashboard() {
-  const metrics = { cameras: 3, alerts: 1, fps: 30, events: 12, uptime: "2h" };
-  const alerts = [
-    { title: "Motion detected — Entrance", time: "14:32:01", camera: "CAM-01", severity: "HIGH" },
-  ];
-  const logs = [
-    { time: "14:32:01", camera: "CAM-01", event: "Motion detected", zone: "Zone-A", severity: "HIGH", status: "Open" },
-    { time: "13:15:44", camera: "CAM-02", event: "Person identified", zone: "Zone-B", severity: "MED", status: "Resolved" },
-    { time: "11:02:17", camera: "CAM-03", event: "Connection restored", zone: "Zone-C", severity: "INFO", status: "Resolved" },
-  ];
+  // 🔌 connect to backend
+  const alerts = useWebSocket("ws://127.0.0.1:8000/ws/alerts/");
+
+  // 📊 dynamic stats
+  const metrics = {
+    cameras: 3, // you can make this dynamic later
+    alerts: alerts.length,
+    fps: 30,
+    events: alerts.length,
+    uptime: "2h",
+  };
+
+  // 🚨 transform alerts for UI
+  const formattedAlerts = alerts.map((a, i) => ({
+    title: a.message || "Unknown alert",
+    time: a.time || new Date().toLocaleTimeString(),
+    camera: a.camera || "CAM-01",
+    severity: a.type === "weapon" ? "HIGH" : "MED",
+  }));
+
+  // 📜 logs = same alerts but formatted differently
+  const logs = alerts.map((a, i) => ({
+    time: a.time || new Date().toLocaleTimeString(),
+    camera: a.camera || "CAM-01",
+    event: a.message || "Detection",
+    zone: a.zone || "Zone-A",
+    severity: a.type === "weapon" ? "HIGH" : "MED",
+    status: "Open",
+  }));
+
   const frame = null;
 
   return (
     <DashboardLayout>
-      <StatsRow metrics={metrics} />
+     <StatsRow metrics={metrics} alerts={alerts} />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
           <LiveFeed frame={frame} />
         </div>
-        <AlertPanel alerts={alerts} />
+
+        <AlertPanel alerts={formattedAlerts} />
       </div>
-      <HistoryTable logs={logs} />
+
+    
     </DashboardLayout>
   );
 }

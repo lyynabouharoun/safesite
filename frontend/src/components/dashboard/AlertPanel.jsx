@@ -1,32 +1,62 @@
-import Card from "../ui/Card";
-import Badge from "../ui/Badge";
+import useWebSocket from "../../hooks/useWebSocket";
 
-export default function AlertPanel({ alerts }) {
-  return (
-    <Card>
-      <div className="flex items-center justify-between mb-4">
-        <div className="text-sm font-medium text-cream">Alert Feed</div>
-        {alerts.length > 0 && <Badge variant="danger">{alerts.length} NEW</Badge>}
-      </div>
+export default function AlertPanel() {
+    const alerts = useWebSocket("ws://127.0.0.1:8000/ws/alerts/");
 
-      <div className="space-y-2 max-h-64 overflow-y-auto">
-        {alerts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 gap-2">
-            <span className="font-mono text-xs text-cream/20">No active alerts</span>
-          </div>
-        ) : (
-          alerts.map((alert, i) => (
-            <div key={i} className="flex items-start gap-3 p-3 rounded-lg bg-coral/5 border border-coral/20">
-              <div className="w-1.5 h-1.5 rounded-full bg-coral mt-1.5 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-medium text-cream">{alert.title}</p>
-                <p className="text-xs font-mono text-cream/40 mt-0.5">{alert.time} · {alert.camera}</p>
-              </div>
-              <Badge variant="danger">{alert.severity}</Badge>
+    const getStyle = (type) => {
+        switch (type) {
+            case "weapon":
+                return "bg-red-100 border-red-500 text-red-700";
+            case "suspicious_object":
+                return "bg-orange-100 border-orange-500 text-orange-700";
+            default:
+                return "bg-gray-100 border-gray-300 text-gray-700";
+        }
+    };
+
+    const getLabel = (type) => {
+        switch (type) {
+            case "weapon":
+                return "🔴 Weapon Detected";
+            case "suspicious_object":
+                return "🟠 Suspicious Object";
+            default:
+                return "⚪ Unknown";
+        }
+    };
+
+    return (
+        <div className="p-4 h-full flex flex-col">
+            <h2 className="text-lg font-bold mb-3">🚨 Live Alerts</h2>
+
+            {/* Empty state */}
+            {alerts.length === 0 && (
+                <p className="text-gray-500 text-sm">No alerts yet</p>
+            )}
+
+            {/* Alerts list */}
+            <div className="flex-1 overflow-y-auto">
+                {alerts.map((alert, index) => (
+                    <div
+                        key={index}
+                        className={`p-3 mb-2 rounded border shadow-sm transition-all ${getStyle(alert.type)}`}
+                    >
+                        <div className="flex justify-between items-center">
+                            <span className="font-semibold">
+                                {getLabel(alert.type)}
+                            </span>
+                            <span className="text-xs opacity-70">
+                                {new Date().toLocaleTimeString()}
+                            </span>
+                        </div>
+
+                        <div className="mt-1 text-sm">
+                            Confidence:{" "}
+                            <b>{(alert.confidence * 100).toFixed(1)}%</b>
+                        </div>
+                    </div>
+                ))}
             </div>
-          ))
-        )}
-      </div>
-    </Card>
-  );
+        </div>
+    );
 }

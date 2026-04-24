@@ -1,53 +1,119 @@
+import { useEffect, useState } from "react";
+import axios from "axios";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import Card from "../components/ui/Card";
-import Badge from "../components/ui/Badge";
-
-const LOGS = [
-  { time: "14:32:01", camera: "CAM-01", event: "Motion detected",      zone: "Zone-A", severity: "HIGH", status: "Open"     },
-  { time: "13:15:44", camera: "CAM-02", event: "Person identified",     zone: "Zone-B", severity: "MED",  status: "Resolved" },
-  { time: "12:04:11", camera: "CAM-04", event: "Camera disconnected",   zone: "Zone-A", severity: "MED",  status: "Resolved" },
-  { time: "11:02:17", camera: "CAM-03", event: "Connection restored",   zone: "Zone-C", severity: "INFO", status: "Resolved" },
-  { time: "10:45:33", camera: "CAM-06", event: "Recording started",     zone: "Zone-C", severity: "INFO", status: "Resolved" },
-  { time: "09:30:00", camera: "CAM-01", event: "System armed",          zone: "Zone-A", severity: "LOW",  status: "Resolved" },
-  { time: "08:00:00", camera: "ALL",    event: "Daily boot complete",   zone: "ALL",    severity: "INFO", status: "Resolved" },
-];
-
-const SEV_VARIANT = { HIGH: "danger", MED: "warning", LOW: "success", INFO: "purple" };
 
 export default function History() {
+  const [logs, setLogs] = useState([]);
+
+  useEffect(() => {
+    fetchLogs();
+  }, []);
+
+  const fetchLogs = async () => {
+    try {
+      const res = await axios.get("http://127.0.0.1:8000/api/alerts/");
+      setLogs(res.data.reverse());
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const deleteLog = async (id) => {
+    try {
+      await axios.delete(`http://127.0.0.1:8000/api/alerts/${id}/`);
+      setLogs((prev) => prev.filter((log) => log.id !== id));
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const toggleArchive = async (log) => {
+    try {
+      await axios.patch(`http://127.0.0.1:8000/api/alerts/${log.id}/`, {
+        archived: !log.archived,
+      });
+
+      setLogs((prev) =>
+        prev.map((l) =>
+          l.id === log.id ? { ...l, archived: !l.archived } : l
+        )
+      );
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-base font-medium text-cream">Event History</h2>
-          <p className="text-xs font-mono text-cream/30 mt-0.5">Full audit log · Today</p>
-        </div>
-        <Badge variant="purple">{LOGS.length} RECORDS</Badge>
-      </div>
+      <h2 className="text-2xl font-bold mb-6">📊 Alert History</h2>
 
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full text-xs font-mono">
-            <thead>
-              <tr className="border-b border-dark-border">
-                {["Timestamp","Camera","Event","Zone","Severity","Status"].map((h) => (
-                  <th key={h} className="text-left py-2 px-3 text-cream/30 font-medium tracking-wider uppercase text-[10px]">
-                    {h}
-                  </th>
-                ))}
+          <table className="w-full text-sm">
+            <thead className="text-left border-b">
+              <tr className="text-gray-600">
+                <th className="py-3">Type</th>
+                <th>Confidence</th>
+                <th>Timestamp</th>
+                <th>Status</th>
+                <th className="text-right">Actions</th>
               </tr>
             </thead>
+
             <tbody>
-              {LOGS.map((log, i) => (
-                <tr key={i} className="border-b border-dark-border/50 hover:bg-dark-surface/60 transition-colors">
-                  <td className="py-3 px-3 text-cream/50">{log.time}</td>
-                  <td className="py-3 px-3 text-cyan">{log.camera}</td>
-                  <td className="py-3 px-3 text-cream">{log.event}</td>
-                  <td className="py-3 px-3 text-cream/50">{log.zone}</td>
-                  <td className="py-3 px-3"><Badge variant={SEV_VARIANT[log.severity] || "default"}>{log.severity}</Badge></td>
-                  <td className="py-3 px-3"><Badge variant={log.status === "Resolved" ? "success" : "danger"}>{log.status}</Badge></td>
+              {logs.map((log) => (
+                <tr
+                  key={log.id}
+                  className="border-b hover:bg-gray-50 transition"
+                >
+                  <td className="py-3 font-medium">{log.type}</td>
+
+                  <td>
+                    <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs">
+                      {log.confidence}
+                    </span>
+                  </td>
+
+                  <td className="text-gray-600">{log.timestamp}</td>
+
+                  <td>
+                    {log.archived ? (
+                      <span className="px-2 py-1 text-xs rounded bg-gray-200">
+                        Archived
+                      </span>
+                    ) : (
+                      <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-700">
+                        Active
+                      </span>
+                    )}
+                  </td>
+
+                  <td className="text-right space-x-2">
+                    <button
+                      onClick={() => toggleArchive(log)}
+                      className="text-sm px-3 py-1 rounded bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
+                    >
+                      {log.archived ? "Unarchive" : "Archive"}
+                    </button>
+
+                    <button
+                      onClick={() => deleteLog(log.id)}
+                      className="text-sm px-3 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200"
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
+
+              {logs.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="text-center py-6 text-gray-500">
+                    No alerts found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
