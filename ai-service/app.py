@@ -26,11 +26,9 @@ def predict(data: FrameRequest): # hadi fonction tae wash ysra ki n#ytolo w ndir
     labels = ["normal", "weapon", "suspicious_object", "person"]
 
     detections = [
-        {
-            "class": random.choice(labels), # fake data ytiri brk since mazal madrnach model 
-            "confidence": round(random.uniform(0.6, 0.99), 2),
-            "bbox": [100, 120, 200, 300]
-        }
+           {"class": "weapon", "confidence": 0.95},
+           {"class": "suspicious_object", "confidence": 0.88},
+           {"class": "person", "confidence": 0.92}
     ]
 
     result = {
