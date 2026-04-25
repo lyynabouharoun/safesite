@@ -1,42 +1,33 @@
-import { useEffect, useState } from "react";
+import { useAlerts } from "../context/AlertsContext";
 import axios from "axios";
 import DashboardLayout from "../components/layout/DashboardLayout";
 import Card from "../components/ui/Card";
 
 export default function History() {
-  const [logs, setLogs] = useState([]);
-
-  useEffect(() => {
-    fetchLogs();
-  }, []);
-
-  const fetchLogs = async () => {
-    try {
-      const res = await axios.get("http://127.0.0.1:8000/api/alerts/");
-      setLogs(res.data.reverse());
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  const { alerts, setAlerts } = useAlerts();
 
   const deleteLog = async (id) => {
     try {
       await axios.delete(`http://127.0.0.1:8000/api/alerts/${id}/`);
-      setLogs((prev) => prev.filter((log) => log.id !== id));
+
+      setAlerts((prev) => prev.filter((alert) => alert.id !== id));
     } catch (err) {
       console.error(err);
     }
   };
 
-  const toggleArchive = async (log) => {
+  const toggleArchive = async (alert) => {
     try {
-      await axios.patch(`http://127.0.0.1:8000/api/alerts/${log.id}/`, {
-        archived: !log.archived,
-      });
+      await axios.patch(
+        `http://127.0.0.1:8000/api/alerts/${alert.id}/`,
+        {
+          archived: !alert.archived,
+        }
+      );
 
-      setLogs((prev) =>
-        prev.map((l) =>
-          l.id === log.id ? { ...l, archived: !l.archived } : l
+      setAlerts((prev) =>
+        prev.map((a) =>
+          a.id === alert.id ? { ...a, archived: !a.archived } : a
         )
       );
     } catch (err) {
@@ -62,23 +53,23 @@ export default function History() {
             </thead>
 
             <tbody>
-              {logs.map((log) => (
+              {[...alerts].reverse().map((alert) => (
                 <tr
-                  key={log.id}
+                  key={alert.id}
                   className="border-b hover:bg-gray-50 transition"
                 >
-                  <td className="py-3 font-medium">{log.type}</td>
+                  <td className="py-3 font-medium">{alert.type}</td>
 
                   <td>
                     <span className="px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs">
-                      {log.confidence}
+                      {alert.confidence}
                     </span>
                   </td>
 
-                  <td className="text-gray-600">{log.timestamp}</td>
+                  <td className="text-gray-600">{alert.timestamp}</td>
 
                   <td>
-                    {log.archived ? (
+                    {alert.archived ? (
                       <span className="px-2 py-1 text-xs rounded bg-gray-200">
                         Archived
                       </span>
@@ -91,14 +82,14 @@ export default function History() {
 
                   <td className="text-right space-x-2">
                     <button
-                      onClick={() => toggleArchive(log)}
+                      onClick={() => toggleArchive(alert)}
                       className="text-sm px-3 py-1 rounded bg-yellow-100 text-yellow-700 hover:bg-yellow-200"
                     >
-                      {log.archived ? "Unarchive" : "Archive"}
+                      {alert.archived ? "Unarchive" : "Archive"}
                     </button>
 
                     <button
-                      onClick={() => deleteLog(log.id)}
+                      onClick={() => deleteLog(alert.id)}
                       className="text-sm px-3 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200"
                     >
                       Delete
@@ -107,7 +98,7 @@ export default function History() {
                 </tr>
               ))}
 
-              {logs.length === 0 && (
+              {alerts.length === 0 && (
                 <tr>
                   <td colSpan="5" className="text-center py-6 text-gray-500">
                     No alerts found

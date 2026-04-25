@@ -1,16 +1,20 @@
-import useWebSocket from "../../hooks/useWebSocket";
+import { useEffect, useRef } from "react";
 
-export default function AlertPanel() {
-    const alerts = useWebSocket("ws://127.0.0.1:8000/ws/alerts/");
+export default function AlertPanel({ alerts = [] }) {
+
+    const prevCountRef = useRef(0);
+    const isFirstLoad = useRef(true); // 👈 ADD THIS
+
+   
 
     const getStyle = (type) => {
         switch (type) {
             case "weapon":
-                return "bg-red-100 border-red-500 text-red-700";
+                return "bg-red-900/20 border-red-500 text-red-300";
             case "suspicious_object":
-                return "bg-orange-100 border-orange-500 text-orange-700";
+                return "bg-orange-900/20 border-orange-500 text-orange-300";
             default:
-                return "bg-gray-100 border-gray-300 text-gray-700";
+                return "bg-gray-900/20 border-gray-500 text-gray-300";
         }
     };
 
@@ -27,35 +31,51 @@ export default function AlertPanel() {
 
     return (
         <div className="p-4 h-full flex flex-col">
-            <h2 className="text-lg font-bold mb-3">🚨 Live Alerts</h2>
+            <h2 className="text-lg font-bold mb-3 text-blue-200">
+                🚨 Live Alerts
+            </h2>
 
-            {/* Empty state */}
             {alerts.length === 0 && (
-                <p className="text-gray-500 text-sm">No alerts yet</p>
+                <p className="text-blue-300/50 text-sm">
+                    No alerts yet
+                </p>
             )}
 
-            {/* Alerts list */}
-            <div className="flex-1 overflow-y-auto">
-                {alerts.map((alert, index) => (
-                    <div
-                        key={index}
-                        className={`p-3 mb-2 rounded border shadow-sm transition-all ${getStyle(alert.type)}`}
-                    >
-                        <div className="flex justify-between items-center">
-                            <span className="font-semibold">
-                                {getLabel(alert.type)}
-                            </span>
-                            <span className="text-xs opacity-70">
-                                {new Date().toLocaleTimeString()}
-                            </span>
-                        </div>
+            <div className="flex-1 overflow-y-auto space-y-2">
+                {alerts.map((alert, index) => {
+                    const type = alert.type || "unknown";
+                    const confidence = alert.confidence ?? 0;
 
-                        <div className="mt-1 text-sm">
-                            Confidence:{" "}
-                            <b>{(alert.confidence * 100).toFixed(1)}%</b>
+                    return (
+                        <div
+                            key={alert.id || alert.timestamp || index}
+                            className={`p-3 rounded border backdrop-blur-md ${getStyle(type)}`}
+                        >
+                            <div className="flex justify-between items-center">
+                                <span className="font-semibold">
+                                    {getLabel(type)}
+                                </span>
+
+                                <span className="text-xs opacity-60">
+                                    {alert.timestamp
+                                        ? new Date(alert.timestamp).toLocaleTimeString()
+                                        : new Date().toLocaleTimeString()}
+                                </span>
+                            </div>
+
+                            <div className="mt-1 text-sm">
+                                Confidence:{" "}
+                                <b>
+                                    {(confidence * 100).toFixed(1)}%
+                                </b>
+                            </div>
+
+                            <div className="text-xs opacity-60 mt-1">
+                                Camera: {alert.camera || "CAM-01"}
+                            </div>
                         </div>
-                    </div>
-                ))}
+                    );
+                })}
             </div>
         </div>
     );
