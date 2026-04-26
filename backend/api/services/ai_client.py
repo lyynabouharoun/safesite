@@ -1,6 +1,6 @@
 import requests
 
-AI_SERVICE_URL = "http://127.0.0.1:8001/predict"  # Docker URL
+AI_SERVICE_URL = "http://ai-service:8001/predict"  # Docker URL
 
 
 def get_ai_prediction(frame_id: int):

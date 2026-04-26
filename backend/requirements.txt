@@ -1,3 +1,25 @@
-fastapi
-uvicorn
-requests
+# Core Django
+Django>=4.2,<5.0
+djangorestframework>=3.14
+
+# Channels (you are using it)
+channels>=4.0
+channels-redis>=4.1
+
+# HTTP requests (AI service calls, APIs)
+requests>=2.31
+
+# CORS (frontend communication)
+django-cors-headers>=4.3
+
+# Environment variables
+python-dotenv>=1.0
+
+# ASGI server (required for channels / async)
+daphne>=4.0
+
+# Optional but very useful for dev/debug
+ipython>=8.0
+
+# Security / production helpers (optional but good)
+gunicorn>=21.2

@@ -19,38 +19,51 @@ export function AlertsProvider({ children }) {
     }
   };
 
-  useEffect(() => {
-    fetchAlerts();
+ useEffect(() => {
+  fetchAlerts();
 
-    // 2️⃣ WEBSOCKET
-    const socket = new WebSocket("ws://127.0.0.1:8000/ws/alerts/");
-    socketRef.current = socket;
+  // 2️⃣ WEBSOCKET
+  const socket = new WebSocket("ws://localhost:8000/ws/alerts/");
+  socketRef.current = socket;
 
-    socket.onmessage = (event) => {
-      const alert = JSON.parse(event.data);
+  // ✅ ADD THIS (debugging)
+  socket.onopen = () => {
+    console.log("✅ WebSocket connected");
+  };
 
-      const alertKey =
-        alert.id ??
-        `${alert.type}-${alert.timestamp}-${alert.camera}-${alert.confidence}`;
+  socket.onerror = (err) => {
+    console.error("❌ WebSocket error", err);
+  };
 
-      setAlerts((prev) => {
-        const exists = prev.some((a) => a._key === alertKey);
+  socket.onclose = () => {
+    console.log("❌ WebSocket closed");
+  };
 
-        if (exists) return prev;
+  // existing message handler (keep it)
+  socket.onmessage = (event) => {
+    const alert = JSON.parse(event.data);
 
-        // 🔊 sound ONLY here
-        const audio = new Audio("/alert.mp3");
-        audio.play().catch(() => {});
+    const alertKey =
+      alert.id ??
+      `${alert.type}-${alert.timestamp}-${alert.camera}-${alert.confidence}`;
 
-        return [
-          { ...alert, _key: alertKey },
-          ...prev,
-        ].slice(0, 50);
-      });
-    };
+    setAlerts((prev) => {
+      const exists = prev.some((a) => a._key === alertKey);
 
-    return () => socket.close();
-  }, []);
+      if (exists) return prev;
+
+      const audio = new Audio("/alert.mp3");
+      audio.play().catch(() => {});
+
+      return [
+        { ...alert, _key: alertKey },
+        ...prev,
+      ].slice(0, 50);
+    });
+  };
+
+  return () => socket.close();
+}, []);
 
   return (
     <AlertsContext.Provider value={{ alerts, setAlerts, fetchAlerts }}>

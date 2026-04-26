@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
-import Cameras from "./pages/Cameras";
+import Cameras from "./pages/cameras";
 import Alerts from "./pages/Alerts";
 import History from "./pages/History";
 import Settings from "./pages/Settings";

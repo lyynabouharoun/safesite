@@ -8,7 +8,6 @@ class Camera(models.Model):
     def __str__(self):
         return self.name
 
-
 class Alert(models.Model):
     ALERT_TYPES = [
         ("weapon", "Weapon"),
@@ -19,8 +18,10 @@ class Alert(models.Model):
     type = models.CharField(max_length=50, choices=ALERT_TYPES)
     confidence = models.FloatField()
     timestamp = models.DateTimeField(auto_now_add=True)
-    camera = models.ForeignKey(Camera, on_delete=models.CASCADE)
+    camera = models.ForeignKey(Camera, on_delete=models.CASCADE, null=True, blank=True)
+    
 
+    
     def __str__(self):
         return f"{self.type} - {self.confidence}"
 
@@ -35,3 +36,4 @@ class Event(models.Model):
 
     def __str__(self):
         return f"{self.camera} - {self.severity}"
+    

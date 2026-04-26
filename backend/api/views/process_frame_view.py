@@ -19,7 +19,9 @@ def process_frame(request):
 
     detections = ai_result.get("detections", [])
     camera = Camera.objects.first()
-
+    
+    if not camera:
+      return Response({"error": "No camera found"}, status=400)
     if not camera:
         return Response({"error": "No camera found"}, status=400)
 
@@ -40,7 +42,8 @@ def process_frame(request):
             alert = Alert.objects.create(
                 type=obj_class,
                 confidence=confidence,
-                camera=camera
+                camera=camera,
+                
             )
 
             created_alerts.append({

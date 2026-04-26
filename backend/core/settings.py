@@ -40,7 +40,8 @@ INSTALLED_APPS = [
     'rest_framework',
     "channels",
     'api',
-    "corsheaders"
+    "corsheaders",
+    'core',
 
 ]
 
@@ -134,8 +135,11 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [("redis", 6379)]
         },
     },
 }
 CORS_ALLOW_ALL_ORIGINS = True
+
+REDIS_HOST = "redis"
+REDIS_PORT = 6379
