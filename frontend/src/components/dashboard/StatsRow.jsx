@@ -11,37 +11,37 @@ export default function StatsRow({ metrics, alerts }) {
   ).length;
 
   const stats = [
-    {
-      label: "Active Cameras",
-      value: metrics.cameras,
-      badge: "ONLINE",
-      variant: "success"
-    },
-    {
-      label: "Open Alerts",
-      value: totalAlerts,
-      badge: totalAlerts > 0 ? "ACTION" : "ALL CLEAR",
-      variant: totalAlerts > 0 ? "danger" : "success"
-    },
-    {
-      label: "Danger Alerts",
-      value: dangerCount,
-      badge: dangerCount > 0 ? "HIGH" : "SAFE",
-      variant: dangerCount > 0 ? "danger" : "success"
-    },
-    {
-      label: "Stream FPS",
-      value: `${metrics.fps} fps`,
-      badge: "STABLE",
-      variant: "success"
-    },
-    {
-      label: "Events Today",
-      value: metrics.events + totalAlerts,
-      badge: "LOGGED",
-      variant: "purple"
-    }
-  ];
+  {
+    label: "Input Feed",
+    value: metrics.cameras === 1 ? "LIVE CAMERA" : "UPLOAD MODE",
+    badge: "ACTIVE",
+    variant: "success"
+  },
+  {
+    label: "Detected Alerts",
+    value: totalAlerts,
+    badge: totalAlerts > 0 ? "REVIEW" : "CLEAR",
+    variant: totalAlerts > 0 ? "danger" : "success"
+  },
+  {
+    label: "High Risk Events",
+    value: dangerCount,
+    badge: dangerCount > 0 ? "CRITICAL" : "SAFE",
+    variant: dangerCount > 0 ? "danger" : "success"
+  },
+  {
+    label: "AI Processing Speed",
+    value: `${metrics.fps} fps`,
+    badge: "STABLE",
+    variant: "success"
+  },
+  {
+    label: "System Activity",
+    value: "RUNNING",
+    badge: "LIVE",
+    variant: "purple"
+  }
+];
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">

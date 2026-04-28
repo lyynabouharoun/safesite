@@ -23,3 +23,8 @@ ipython>=8.0
 
 # Security / production helpers (optional but good)
 gunicorn>=21.2
+
+celery
+
+redis
+django-celery-results

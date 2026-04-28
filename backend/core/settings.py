@@ -143,3 +143,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 REDIS_HOST = "redis"
 REDIS_PORT = 6379
+
+CELERY_BROKER_URL = 'amqp://guest:guest@rabbitmq:5672//'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'

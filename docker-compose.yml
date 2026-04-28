@@ -1,23 +1,56 @@
+version: "3.9"
+
 services:
 
   redis:
     image: redis:7
     ports:
       - "6379:6379"
+    restart: always
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    restart: always
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   ai-service:
     build: ./ai-service
     ports:
       - "8001:8001"
+    restart: always
 
   backend:
     build: ./backend
     ports:
       - "8000:8000"
     depends_on:
-      - ai-service
-      - redis
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      ai-service:
+        condition: service_started
     command: daphne -b 0.0.0.0 -p 8000 core.asgi:application
+    restart: always
+
+  celery:
+    build: ./backend
+    command: sh -c "sleep 10 && celery -A core worker -l info"
+    volumes:
+      - ./backend:/app
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    restart: always
 
   frontend:
     build: ./frontend
@@ -25,3 +58,4 @@ services:
       - "5173:5173"
     depends_on:
       - backend
+    restart: always
