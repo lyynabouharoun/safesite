@@ -1,183 +1,171 @@
 import { useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
+import { GoogleLogin } from "@react-oauth/google"; 
 import useAuth from "../hooks/useAuth";
 
 export default function Auth() {
-  const { login } = useAuth();
+  const { login, handleAuthSuccess } = useAuth();
 
-  const [mode, setMode] = useState("login"); // login | register
+  const [mode, setMode] = useState("login");
   const [loading, setLoading] = useState(false);
 
-  // login
+  // Form States
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
-  // register
   const [name, setName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
 
   const handleLogin = async () => {
     setLoading(true);
-    await login(email, password);
+    try {
+      await login(email, password);
+    } catch (error) {
+      console.error("Login Error:", error);
+    }
+    setLoading(false);
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setLoading(true);
+    try {
+      const response = await fetch("http://localhost:8002/api/auth/google/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: credentialResponse.credential }),
+      });
+
+      const data = await response.json();
+      console.log("GOOGLE RESPONSE:", data);
+
+      // ✅ FIX 1: use response.ok instead of data.status
+      if (response.ok) {
+        // ✅ FIX 2: pass email not whole user object
+       handleAuthSuccess({
+  email: data.user.email,
+  name: data.user.name || data.user.email.split("@")[0],
+});
+      } else {
+        alert(data.message || "Google Authentication failed");
+      }
+    } catch (error) {
+      console.error("Google Connection Error:", error);
+      alert("Could not connect to Auth Service.");
+    }
     setLoading(false);
   };
 
   const handleRegister = async () => {
     setLoading(true);
+    try {
+      const response = await fetch("http://localhost:8002/api/auth/register/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
 
-    // TODO: connect to backend later
-    console.log({ name, regEmail, regPassword });
+        // ✅ FIX 3: correct field names
+        body: JSON.stringify({
+          name,
+          email: regEmail,
+          password: regPassword,
+        }),
+      });
 
+      const data = await response.json();
+      console.log("REGISTER RESPONSE:", data);
+
+      if (response.ok) {
+        alert("Account created! You can now login.");
+        setMode("login");
+      } else {
+        alert(data.message || "Registration failed");
+      }
+    } catch (error) {
+      alert("Auth Service is offline.");
+    }
     setLoading(false);
-    setMode("login");
   };
 
   return (
-    <div className="min-h-screen bg-dark-base flex items-center justify-center px-4">
-
-      {/* GRID BG */}
-      <div className="absolute inset-0 opacity-[0.03]"
-        style={{
-          backgroundImage:
-            "linear-gradient(#76D2DB 1px, transparent 1px), linear-gradient(90deg, #76D2DB 1px, transparent 1px)",
-          backgroundSize: "40px 40px",
-        }}
-      />
-
-      <div className="relative w-full max-w-sm">
-
-        {/* HEADER */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-light text-cream">
-            Secure Access
-          </h1>
-          <p className="text-sm text-cream/40 font-mono">
-            Security Operations System
-          </p>
-        </div>
-
-        {/* TOGGLE */}
-        <div className="flex mb-6 bg-dark-surface border border-dark-border rounded-lg overflow-hidden">
-          <button
-            onClick={() => setMode("login")}
-            className={`flex-1 py-2 text-xs font-mono transition ${
-              mode === "login"
-                ? "bg-cyan text-dark-base"
-                : "text-cream/50"
-            }`}
-          >
-            LOGIN
-          </button>
-
-          <button
-            onClick={() => setMode("register")}
-            className={`flex-1 py-2 text-xs font-mono transition ${
-              mode === "register"
-                ? "bg-cyan text-dark-base"
-                : "text-cream/50"
-            }`}
-          >
-            REGISTER
-          </button>
-        </div>
-
-        {/* FORM */}
-        <AnimatePresence mode="wait">
-
-          {/* LOGIN */}
-          {mode === "login" && (
-            <motion.div
-              key="login"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 10 }}
-              className="space-y-3"
-            >
-              <input
-                type="email"
-                placeholder="operator@safesite.io"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-dark-surface border border-dark-border rounded-lg px-4 py-3 text-sm text-cream"
-              />
-
-              <input
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-dark-surface border border-dark-border rounded-lg px-4 py-3 text-sm text-cream"
-              />
-
-              <button
-                onClick={handleLogin}
-                disabled={loading}
-                className="w-full bg-cyan text-dark-base font-mono text-sm py-3 rounded-lg"
-              >
-                {loading ? "Authenticating..." : "Login"}
-              </button>
-            </motion.div>
-          )}
-
-          {/* REGISTER */}
+    <div className="min-h-screen bg-[#0f111a] flex items-center justify-center px-4">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-[#1a1d29] p-8 rounded-2xl shadow-2xl w-full max-w-md border border-gray-800"
+      >
+        <h2 className="text-3xl font-extrabold text-white mb-8 text-center tracking-tight">
+          {mode === "login" ? "Secure Login" : "Join Safesite"}
+        </h2>
+        
+        <div className="space-y-4">
           {mode === "register" && (
-            <motion.div
-              key="register"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              className="space-y-3"
-            >
-              <input
-                type="text"
-                placeholder="Full name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full bg-dark-surface border border-dark-border rounded-lg px-4 py-3 text-sm text-cream"
-              />
-
-              <input
-                type="email"
-                placeholder="Email"
-                value={regEmail}
-                onChange={(e) => setRegEmail(e.target.value)}
-                className="w-full bg-dark-surface border border-dark-border rounded-lg px-4 py-3 text-sm text-cream"
-              />
-
-              <input
-                type="password"
-                placeholder="Password"
-                value={regPassword}
-                onChange={(e) => setRegPassword(e.target.value)}
-                className="w-full bg-dark-surface border border-dark-border rounded-lg px-4 py-3 text-sm text-cream"
-              />
-
-              <button
-                onClick={handleRegister}
-                disabled={loading}
-                className="w-full bg-cyan text-dark-base font-mono text-sm py-3 rounded-lg"
-              >
-                Create Account
-              </button>
-            </motion.div>
+            <input 
+              className="w-full p-3 bg-[#252936] text-white rounded-lg border border-gray-700"
+              placeholder="Full Name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
           )}
 
-        </AnimatePresence>
+          <input 
+            className="w-full p-3 bg-[#252936] text-white rounded-lg border border-gray-700"
+            placeholder="Email Address"
+            value={mode === "login" ? email : regEmail}
+            onChange={(e) =>
+              mode === "login"
+                ? setEmail(e.target.value)
+                : setRegEmail(e.target.value)
+            }
+          />
 
-        {/* GOOGLE LOGIN */}
-        <div className="mt-5">
-          <button className="w-full border border-dark-border text-cream/70 text-xs py-3 rounded-lg hover:border-cyan/40 transition">
-            Continue with Google
+          <input 
+            type="password"
+            className="w-full p-3 bg-[#252936] text-white rounded-lg border border-gray-700"
+            placeholder="Password"
+            value={mode === "login" ? password : regPassword}
+            onChange={(e) =>
+              mode === "login"
+                ? setPassword(e.target.value)
+                : setRegPassword(e.target.value)
+            }
+          />
+
+          <button 
+            type="button" // ✅ prevents weird refresh bugs
+            onClick={mode === "login" ? handleLogin : handleRegister}
+            disabled={loading}
+            className="w-full bg-blue-600 text-white font-bold py-3 rounded-lg"
+          >
+            {loading ? "Please wait..." : mode === "login" ? "Sign In" : "Create Account"}
           </button>
+
+          {mode === "login" && (
+            <>
+              <div className="flex items-center my-6">
+                <div className="flex-1 h-px bg-gray-700"></div>
+                <span className="px-3 text-xs text-gray-500 uppercase">Or continue with</span>
+                <div className="flex-1 h-px bg-gray-700"></div>
+              </div>
+
+              <div className="flex justify-center w-full">
+                <GoogleLogin 
+                  onSuccess={handleGoogleSuccess} 
+                  onError={() => alert("Google Login Failed")}
+                />
+              </div>
+            </>
+          )}
         </div>
 
-        {/* FOOTER */}
-        <p className="text-xs text-cream/20 font-mono mt-8 text-center">
-          SAFESITE AUTH SYSTEM · ENCRYPTED
+        <p className="text-gray-400 mt-8 text-center text-sm">
+          {mode === "login" ? "New to the platform?" : "Already have an account?"}
+          <button 
+            className="ml-2 text-blue-500 font-semibold"
+            onClick={() => setMode(mode === "login" ? "register" : "login")}
+          >
+            {mode === "login" ? "Register Now" : "Log In"}
+          </button>
         </p>
-
-      </div>
+      </motion.div>
     </div>
   );
 }

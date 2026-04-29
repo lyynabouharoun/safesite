@@ -13,7 +13,10 @@ export default function Navbar({ pageTitle }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  const { user, logout } = useAuth();
+const auth = useAuth();
+const user = auth.getUser();
+const logout = auth.logout;
+
   const { alerts } = useAlerts();
 
   const navigate = useNavigate();
@@ -38,7 +41,6 @@ export default function Navbar({ pageTitle }) {
     return () => clearInterval(t);
   }, []);
 
-  // close on outside click
   useEffect(() => {
     function handleClick(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -51,12 +53,12 @@ export default function Navbar({ pageTitle }) {
   }, []);
 
   const toggleNotif = () => {
-    setNotifOpen((prev) => !prev);
+    setNotifOpen((p) => !p);
     setProfileOpen(false);
   };
 
   const toggleProfile = () => {
-    setProfileOpen((prev) => !prev);
+    setProfileOpen((p) => !p);
     setNotifOpen(false);
   };
 
@@ -71,7 +73,10 @@ export default function Navbar({ pageTitle }) {
     month: "short",
   });
 
-  const initials = user?.email?.slice(0, 2).toUpperCase() || "OP";
+  const initials =
+    user?.email?.slice(0, 2).toUpperCase() ||
+    user?.name?.slice(0, 2).toUpperCase() ||
+    "OP";
 
   return (
     <header className="h-16 flex items-center justify-between px-6 border-b border-dark-border bg-dark-surface/95 backdrop-blur-md relative z-50">
@@ -103,7 +108,6 @@ export default function Navbar({ pageTitle }) {
 
         {/* NOTIFICATIONS */}
         <div className="relative">
-
           <button
             onClick={toggleNotif}
             className="relative p-2 text-cream/60 hover:text-cyan transition"
@@ -123,8 +127,7 @@ export default function Navbar({ pageTitle }) {
                 initial={{ opacity: 0, y: -10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-0 mt-3 w-80 bg-dark-surface/95 backdrop-blur-xl border border-dark-border rounded-xl shadow-2xl z-[9999]"
+                className="absolute right-0 mt-3 w-80 bg-dark-surface border border-dark-border rounded-xl shadow-2xl"
               >
                 <div className="p-3 border-b border-dark-border">
                   <p className="text-xs text-cream font-mono">
@@ -141,7 +144,7 @@ export default function Navbar({ pageTitle }) {
                     latestAlerts.map((a, i) => (
                       <div
                         key={i}
-                        className="px-3 py-2 border-b border-dark-border/40 hover:bg-dark-card transition"
+                        className="px-3 py-2 border-b border-dark-border/40"
                       >
                         <p className="text-xs text-cream">
                           ⚠ {a.type} detected
@@ -160,10 +163,9 @@ export default function Navbar({ pageTitle }) {
 
         {/* PROFILE */}
         <div className="relative">
-
           <button
             onClick={toggleProfile}
-            className="w-8 h-8 rounded-full bg-plum flex items-center justify-center hover:scale-105 transition"
+            className="w-8 h-8 rounded-full bg-plum flex items-center justify-center"
           >
             <span className="text-xs text-cyan font-mono">
               {initials}
@@ -176,13 +178,11 @@ export default function Navbar({ pageTitle }) {
                 initial={{ opacity: 0, y: -10, scale: 0.95 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -10, scale: 0.95 }}
-                transition={{ duration: 0.15 }}
-                className="absolute right-0 mt-3 w-56 bg-dark-surface/95 backdrop-blur-xl border border-dark-border rounded-xl shadow-2xl z-[9999]"
+                className="absolute right-0 mt-3 w-56 bg-dark-surface border border-dark-border rounded-xl shadow-2xl"
               >
-
                 <div className="p-3 border-b border-dark-border">
                   <p className="text-xs text-cream">
-                    {user?.email}
+                    {user?.email || "No user"}
                   </p>
                 </div>
 
@@ -191,9 +191,9 @@ export default function Navbar({ pageTitle }) {
                     setProfileOpen(false);
                     navigate("/profile");
                   }}
-                  className="w-full text-left px-3 py-2 text-xs hover:bg-dark-card transition flex items-center gap-2"
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-dark-card"
                 >
-                  <FiUser className="w-3 h-3" />
+                  <FiUser className="inline mr-2" />
                   Profile
                 </button>
 
@@ -202,12 +202,11 @@ export default function Navbar({ pageTitle }) {
                     logout();
                     setProfileOpen(false);
                   }}
-                  className="w-full text-left px-3 py-2 text-xs text-coral hover:bg-coral/10 transition flex items-center gap-2"
+                  className="w-full text-left px-3 py-2 text-xs text-coral hover:bg-coral/10"
                 >
-                  <FiLogOut className="w-3 h-3" />
+                  <FiLogOut className="inline mr-2" />
                   Logout
                 </button>
-
               </motion.div>
             )}
           </AnimatePresence>

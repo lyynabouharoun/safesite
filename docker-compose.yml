@@ -1,7 +1,6 @@
 version: "3.9"
 
 services:
-
   redis:
     image: redis:7
     ports:
@@ -19,6 +18,20 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  # --- NEW AUTH SERVICE ---
+  # --- NEW AUTH SERVICE ---
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "8002:8002"
+    environment:
+      - GOOGLE_CLIENT_ID=491409934255-t4340hqkqos46hld52eftq9v7m0egp89.apps.googleusercontent.com
+      - GOOGLE_CLIENT_SECRET=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
+    volumes:
+      - ./auth-service:/app      # Add this so your code updates without rebuilding!
+      - ./backend:/db_sharing:rw 
+    restart: always
 
   ai-service:
     build: ./ai-service
@@ -56,6 +69,10 @@ services:
     build: ./frontend
     ports:
       - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules     # Keeps your local node_modules from conflicting
     depends_on:
       - backend
+      - auth-service
     restart: always

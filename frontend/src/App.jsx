@@ -8,21 +8,63 @@ import Notifications from "./pages/Notifications";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import { AlertsProvider } from "./context/AlertsContext";
 
-function P({ children }) {
-  return <ProtectedRoute>{children}</ProtectedRoute>;
-}
-
 export default function App() {
   return (
     <AlertsProvider>
       <Routes>
+
+        {/* PUBLIC ROUTE */}
         <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<P><Dashboard /></P>} />
-        <Route path="/cameras" element={<P><Cameras /></P>} />
-        <Route path="/history" element={<P><History /></P>} />
-        <Route path="/profile" element={<P><Profile /></P>} />        <Route path="/notifications" element={<P><Notifications /></P>} />
+
+        {/* PROTECTED ROUTES */}
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/cameras"
+          element={
+            <ProtectedRoute>
+              <Cameras />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/history"
+          element={
+            <ProtectedRoute>
+              <History />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <Profile />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/notifications"
+          element={
+            <ProtectedRoute>
+              <Notifications />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* DEFAULT */}
         <Route path="*" element={<Navigate to="/login" replace />} />
-        
+
       </Routes>
     </AlertsProvider>
   );
