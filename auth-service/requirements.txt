@@ -1,0 +1,6 @@
+django
+django-cors-headers
+djangorestframework
+google-auth
+google-auth-httplib2
+google-auth-oauthlib
