@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink } from "react-router-dom";
+import { NavLink, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 
 import {
@@ -25,6 +25,15 @@ export default function Sidebar({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
+  const navigate = useNavigate();
+
+  const handleNavigation = (path, e) => {
+    // If already on the same page, force a hard refresh
+    if (window.location.pathname === path) {
+      e.preventDefault();
+      window.location.href = path;
+    }
+  };
 
   return (
     <aside
@@ -59,7 +68,12 @@ export default function Sidebar({
           const Icon = item.icon;
 
           return (
-            <NavLink key={item.path} to={item.path} className="relative group">
+            <NavLink 
+              key={item.path} 
+              to={item.path}
+              onClick={(e) => handleNavigation(item.path, e)}
+              className="relative group"
+            >
               {({ isActive }) => (
                 <motion.div
                   whileHover={{ x: 3 }}
@@ -105,7 +119,6 @@ export default function Sidebar({
 
       {/* USER SECTION */}
       <div className="border-t border-dark-border p-3 relative">
-
         <div
           onClick={() => setUserMenu((v) => !v)}
           className={`
@@ -142,7 +155,10 @@ export default function Sidebar({
               exit={{ opacity: 0, y: 10, scale: 0.95 }}
               className="absolute bottom-16 left-3 right-3 bg-dark-surface border border-dark-border rounded-xl shadow-xl overflow-hidden z-50"
             >
-              <button className="w-full text-left px-3 py-2 text-xs text-cream hover:bg-dark-card transition">
+              <button 
+                onClick={() => navigate("/profile")}
+                className="w-full text-left px-3 py-2 text-xs text-cream hover:bg-dark-card transition"
+              >
                 Profile Settings
               </button>
 
