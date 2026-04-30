@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -20,14 +20,41 @@ const NAV = [
   { label: "Profile", path: "/profile", icon: FiUser },
 ];
 
-export default function Sidebar({
-  user = { name: "Admin", role: "Security Operator" },
-}) {
+export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [userData, setUserData] = useState({ name: "Admin", role: "Security Administrator" });
   const navigate = useNavigate();
 
+  // Load user data from localStorage
+  useEffect(() => {
+    const loadUser = () => {
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          setUserData({
+            name: user.name || user.email?.split("@")[0] || "Admin",
+            role: "Security Administrator"
+          });
+        } catch (e) {
+          console.error("Error parsing user data", e);
+        }
+      }
+    };
+    
+    loadUser();
+    
+    // Listen for storage changes (when user updates profile)
+    window.addEventListener('storage', loadUser);
+    window.addEventListener('user-updated', loadUser);
+    
+    return () => {
+      window.removeEventListener('storage', loadUser);
+      window.removeEventListener('user-updated', loadUser);
+    };
+  }, []);
+
   const handleNavigation = (path, e) => {
-    // If already on the same page, force a hard refresh
     if (window.location.pathname === path) {
       e.preventDefault();
       window.location.href = path;
@@ -36,7 +63,17 @@ export default function Sidebar({
 
   const handleLogout = () => {
     localStorage.clear();
+    window.dispatchEvent(new Event('storage'));
     navigate("/login");
+  };
+
+  // Get initials for avatar
+  const getInitials = () => {
+    const name = userData.name;
+    if (name && name !== "Admin") {
+      return name.slice(0, 2).toUpperCase();
+    }
+    return "OP";
   };
 
   return (
@@ -121,15 +158,17 @@ export default function Sidebar({
         })}
       </nav>
 
-      {/* USER SECTION - WITHOUT POPUP MENU */}
+      {/* USER SECTION */}
       <div className="border-t border-dark-border p-3">
         <div className={`
           flex items-center gap-3 p-2 rounded-xl
           ${collapsed ? "justify-center" : ""}
         `}>
           <div className="relative">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-plum to-plum-800 flex items-center justify-center border border-cyan/20">
-              <FiUser className="w-4 h-4 text-cyan" />
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan/20 to-cyan/5 flex items-center justify-center border border-cyan/30">
+              <span className="text-cyan font-mono text-xs font-bold">
+                {getInitials()}
+              </span>
             </div>
             <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-dark-surface" />
           </div>
@@ -137,15 +176,15 @@ export default function Sidebar({
           {!collapsed && (
             <div className="min-w-0 flex-1">
               <p className="text-cream text-xs font-mono truncate">
-                {user.name}
+                {userData.name}
               </p>
               <p className="text-cyan/50 text-[10px] font-mono truncate">
-                {user.role}
+                {userData.role}
               </p>
             </div>
           )}
 
-          {/* LOGOUT BUTTON - Direct button instead of menu */}
+          {/* LOGOUT BUTTON */}
           {!collapsed && (
             <button
               onClick={handleLogout}
@@ -157,7 +196,7 @@ export default function Sidebar({
           )}
         </div>
 
-        {/* Logout button when collapsed (tooltip) */}
+        {/* Logout button when collapsed */}
         {collapsed && (
           <div className="flex justify-center mt-2">
             <button
