@@ -8,6 +8,13 @@ export default function useAuth() {
     return saved ? JSON.parse(saved) : null;
   });
 
+  // Helper to dispatch auth change event
+  const dispatchAuthChange = () => {
+    window.dispatchEvent(new Event('auth-change'));
+    // Also trigger storage event for cross-tab sync
+    window.dispatchEvent(new Event('storage'));
+  };
+
   const handleAuthSuccess = (user, tokens) => {
     const safeUser = {
       email: user.email,
@@ -18,7 +25,10 @@ export default function useAuth() {
     localStorage.setItem("user", JSON.stringify(safeUser));
     localStorage.setItem("access_token", tokens.access);
     localStorage.setItem("refresh_token", tokens.refresh);
-
+    
+    // Dispatch events to trigger alert refresh
+    dispatchAuthChange();
+    
     navigate("/dashboard");
   };
 
@@ -62,6 +72,7 @@ export default function useAuth() {
       const data = await response.json();
       if (response.ok) {
         localStorage.setItem("access_token", data.access);
+        dispatchAuthChange();
         return data.access;
       }
     } catch (error) {
@@ -77,6 +88,7 @@ export default function useAuth() {
 
   const logout = () => {
     localStorage.clear();
+    dispatchAuthChange();
     navigate("/login");
   };
 

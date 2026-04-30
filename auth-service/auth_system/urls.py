@@ -9,6 +9,7 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 )
 
+from accounts.views import api_update_profile, api_change_password
 
 
 urlpatterns = [
@@ -22,4 +23,8 @@ urlpatterns = [
     path('api/auth/login/', api_login),
     path('api/auth/register/', api_register),
     path('api/auth/google/', api_google_login),
+
+path('api/auth/update-profile/', api_update_profile, name='update_profile'),
+path('api/auth/change-password/', api_change_password, name='change_password'),
+    
 ]

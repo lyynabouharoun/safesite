@@ -11,6 +11,7 @@ export default function Dashboard() {
   const { alerts, fetchAlerts } = useAlerts();
 
   const [video, setVideo] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false); // NEW: loading state
 
   const metrics = {
     cameras: 3,
@@ -59,14 +60,38 @@ export default function Dashboard() {
               accept="video/*"
               onChange={(e) => setVideo(e.target.files[0])}
               className="text-sm text-cream w-full p-2 border border-dark-border rounded-lg bg-dark-base"
+              disabled={isAnalyzing}
             />
 
-            {video && (
+            {video && !isAnalyzing && (
               <video
                 controls
                 className="w-full rounded-lg border border-dark-border"
                 src={URL.createObjectURL(video)}
               />
+            )}
+
+            {/* Loading animation while analyzing */}
+            {isAnalyzing && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="flex flex-col items-center justify-center py-8 space-y-3"
+              >
+                <div className="relative">
+                  <div className="w-16 h-16 border-4 border-cyan/20 rounded-full animate-spin border-t-cyan"></div>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-2xl">🔍</span>
+                  </div>
+                </div>
+                <p className="text-cyan font-medium">Analyzing video...</p>
+                <p className="text-gray-400 text-xs">AI is processing each frame for violence detection</p>
+                <div className="flex gap-1 mt-2">
+                  <div className="w-2 h-2 bg-cyan rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                  <div className="w-2 h-2 bg-cyan rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                  <div className="w-2 h-2 bg-cyan rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                </div>
+              </motion.div>
             )}
 
             <button
@@ -76,7 +101,8 @@ export default function Dashboard() {
                   return;
                 }
                 
-                const loadingToast = toast.loading('📹 Analyzing video...');
+                // Show loading state
+                setIsAnalyzing(true);
                 
                 const formData = new FormData();
                 formData.append('video', video);
@@ -100,7 +126,6 @@ export default function Dashboard() {
                   }
                   
                   const result = await response.json();
-                  toast.dismiss(loadingToast);
                   
                   if (result.alert_created === 1) {
                     toast.success('🚨 VIOLENCE DETECTED!', {
@@ -122,15 +147,30 @@ export default function Dashboard() {
                   await fetchAlerts();
                   
                 } catch (error) {
-                  toast.dismiss(loadingToast);
                   toast.error('❌ Error processing video');
                   console.error('Upload error:', error);
+                } finally {
+                  // Hide loading state
+                  setIsAnalyzing(false);
                 }
               }}
-              className="w-full px-4 py-2 text-sm bg-cyan/20 text-cyan rounded-lg hover:bg-cyan/30 transition font-semibold"
+              disabled={isAnalyzing}
+              className={`w-full px-4 py-2 text-sm rounded-lg transition font-semibold ${
+                isAnalyzing 
+                  ? 'bg-gray-600/50 text-gray-400 cursor-not-allowed' 
+                  : 'bg-cyan/20 text-cyan hover:bg-cyan/30'
+              }`}
             >
-              🎬 Send to AI Service
+              {isAnalyzing ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-cyan/30 rounded-full animate-spin border-t-cyan"></span>
+                  Analyzing...
+                </span>
+              ) : (
+                '🎬 Send to AI Service'
+              )}
             </button>
+
           </div>
         </motion.div>
 

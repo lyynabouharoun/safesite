@@ -18,6 +18,7 @@ export function AlertsProvider({ children }) {
       const token = getAuthToken();
       if (!token) {
         console.log("No token found, skipping alerts fetch");
+        setAlerts([]); // Clear alerts when no token
         return;
       }
       
@@ -44,7 +45,24 @@ export function AlertsProvider({ children }) {
     // Fetch existing alerts on load
     fetchAlerts();
 
-    // WebSocket connection for real-time alerts (no auth needed for WebSocket)
+    // Listen for storage changes (when user logs in/out from another tab or same tab)
+    const handleStorageChange = (e) => {
+      if (e.key === 'access_token' || e.key === 'isAuthenticated' || e.key === 'user') {
+        console.log("🔄 Auth changed, refreshing alerts...");
+        fetchAlerts();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Also listen for custom event for same-tab updates
+    const handleAuthChange = () => {
+      console.log("🔄 Auth change event received, refreshing alerts...");
+      fetchAlerts();
+    };
+    window.addEventListener('auth-change', handleAuthChange);
+
+    // WebSocket connection for real-time alerts
     const socket = new WebSocket("ws://localhost:8000/ws/alerts/");
     socketRef.current = socket;
 
@@ -86,6 +104,8 @@ export function AlertsProvider({ children }) {
       if (socketRef.current) {
         socketRef.current.close();
       }
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('auth-change', handleAuthChange);
     };
   }, []);
 

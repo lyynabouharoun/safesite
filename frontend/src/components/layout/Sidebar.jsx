@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NavLink, useNavigate } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 
 import {
   FiGrid,
@@ -24,7 +24,6 @@ export default function Sidebar({
   user = { name: "Admin", role: "Security Operator" },
 }) {
   const [collapsed, setCollapsed] = useState(false);
-  const [userMenu, setUserMenu] = useState(false);
   const navigate = useNavigate();
 
   const handleNavigation = (path, e) => {
@@ -33,6 +32,11 @@ export default function Sidebar({
       e.preventDefault();
       window.location.href = path;
     }
+  };
+
+  const handleLogout = () => {
+    localStorage.clear();
+    navigate("/login");
   };
 
   return (
@@ -117,16 +121,12 @@ export default function Sidebar({
         })}
       </nav>
 
-      {/* USER SECTION */}
-      <div className="border-t border-dark-border p-3 relative">
-        <div
-          onClick={() => setUserMenu((v) => !v)}
-          className={`
-            flex items-center gap-3 p-2 rounded-xl cursor-pointer
-            hover:bg-dark-card/50 transition
-            ${collapsed ? "justify-center" : ""}
-          `}
-        >
+      {/* USER SECTION - WITHOUT POPUP MENU */}
+      <div className="border-t border-dark-border p-3">
+        <div className={`
+          flex items-center gap-3 p-2 rounded-xl
+          ${collapsed ? "justify-center" : ""}
+        `}>
           <div className="relative">
             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-plum to-plum-800 flex items-center justify-center border border-cyan/20">
               <FiUser className="w-4 h-4 text-cyan" />
@@ -135,7 +135,7 @@ export default function Sidebar({
           </div>
 
           {!collapsed && (
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <p className="text-cream text-xs font-mono truncate">
                 {user.name}
               </p>
@@ -144,31 +144,34 @@ export default function Sidebar({
               </p>
             </div>
           )}
+
+          {/* LOGOUT BUTTON - Direct button instead of menu */}
+          {!collapsed && (
+            <button
+              onClick={handleLogout}
+              className="p-1.5 rounded-lg text-coral hover:bg-coral/10 transition"
+              title="Logout"
+            >
+              <FiLogOut className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
-        {/* USER MENU */}
-        <AnimatePresence>
-          {userMenu && !collapsed && (
-            <motion.div
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="absolute bottom-16 left-3 right-3 bg-dark-surface border border-dark-border rounded-xl shadow-xl overflow-hidden z-50"
+        {/* Logout button when collapsed (tooltip) */}
+        {collapsed && (
+          <div className="flex justify-center mt-2">
+            <button
+              onClick={handleLogout}
+              className="p-2 rounded-lg text-coral hover:bg-coral/10 transition relative group"
+              title="Logout"
             >
-              <button 
-                onClick={() => navigate("/profile")}
-                className="w-full text-left px-3 py-2 text-xs text-cream hover:bg-dark-card transition"
-              >
-                Profile Settings
-              </button>
-
-              <button className="w-full text-left px-3 py-2 text-xs text-coral hover:bg-coral/10 transition flex items-center gap-2">
-                <FiLogOut className="w-3 h-3" />
+              <FiLogOut className="w-4 h-4" />
+              <div className="absolute left-full ml-2 px-2 py-1 bg-dark-card border border-dark-border rounded-md text-xs text-coral opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-50">
                 Logout
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              </div>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* TOGGLE */}

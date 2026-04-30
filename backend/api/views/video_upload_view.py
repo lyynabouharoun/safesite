@@ -21,6 +21,7 @@ def upload_video(request):
         if not video_file:
             return Response({'error': 'No video file provided'}, status=400)
         
+        # Get or create camera
         camera, _ = Camera.objects.get_or_create(
             id=1, 
             defaults={'name': 'Upload Camera', 'location': 'Unknown', 'status': 'active'}
@@ -33,10 +34,9 @@ def upload_video(request):
         
         cap = cv2.VideoCapture(video_path)
         
-        # Settings - ADJUST THESE NUMBERS
-        MAX_FRAMES = 20                    # Analyze up to 20 frames
-        MIN_CONFIDENCE = 0.55              # Only count frames with confidence >55%
-        MIN_FRAMES_FOR_ALERT = 3           # Need 3 good frames to trigger alert
+        MAX_FRAMES = 20
+        MIN_CONFIDENCE = 0.4
+        MIN_FRAMES_FOR_ALERT = 2
         
         violence_frames = 0
         frame_count = 0
@@ -47,7 +47,6 @@ def upload_video(request):
             if not ret:
                 break
             
-            # Analyze every frame
             frame = cv2.resize(frame, (224, 224))
             _, buffer = cv2.imencode('.jpg', frame)
             frame_base64 = base64.b64encode(buffer).decode('utf-8')
@@ -64,7 +63,6 @@ def upload_video(request):
             
             print(f"Frame {frame_count}: {result.get('prediction')} - conf:{confidence:.2f} alert:{is_alert}")
             
-            # Only count if: alert is True AND confidence is high enough
             if is_alert and confidence >= MIN_CONFIDENCE:
                 violence_frames += 1
                 print(f"  ✅ COUNTED as violence frame!")
@@ -74,26 +72,25 @@ def upload_video(request):
         cap.release()
         os.unlink(video_path)
         
-        # Calculate average confidence for info
         avg_confidence = sum(all_confidences) / len(all_confidences) if all_confidences else 0
-        
-        # Decision: enough high-confidence frames?
         is_violence = violence_frames >= MIN_FRAMES_FOR_ALERT
         
-        print(f"Results: {violence_frames}/{frame_count} high-confidence violence frames")
+        print(f"Results: {violence_frames}/{frame_count} violence frames")
         print(f"Average confidence: {avg_confidence:.3f}")
         print(f"Violence detected: {is_violence}")
         
         channel_layer = get_channel_layer()
         
         if is_violence:
+            # IMPORTANT: Save alert with the logged-in user
             alert = Alert.objects.create(
                 type='suspicious',
                 confidence=avg_confidence,
-                camera=camera
+                camera=camera,
+                user=request.user  # ✅ ADD THIS - assigns alert to logged-in user
             )
             
-            print(f"🚨 ALERT CREATED! {violence_frames} high-confidence violence frames")
+            print(f"🚨 ALERT CREATED for user {request.user.username}! ID: {alert.id}")
             
             alert_ws = {
                 'id': alert.id,
@@ -102,8 +99,11 @@ def upload_video(request):
                 'timestamp': alert.timestamp.isoformat(),
                 'camera': camera.id,
                 'type': 'violence',
-                'frames_detected': violence_frames
+                'frames_detected': violence_frames,
+                'user_id': request.user.id
             }
+            
+            print(f"📤 Sending WebSocket alert: {alert_ws}")
             
             async_to_sync(channel_layer.group_send)(
                 'alerts_group',
@@ -112,6 +112,8 @@ def upload_video(request):
                     'alert': alert_ws
                 }
             )
+        else:
+            print(f"✅ No alert - only {violence_frames} frames detected")
         
         return Response({
             'status': 'completed',
