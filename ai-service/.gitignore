@@ -1,0 +1,19 @@
+venv/
+__pycache__/
+*.pyc
+
+# datasets (DO NOT PUSH)
+data/raw/
+data/processed_frames/
+data/sequences/
+
+# models
+*.pth
+
+# media
+*.mp4
+*.jpg
+*.png
+
+# misc
+.DS_Store

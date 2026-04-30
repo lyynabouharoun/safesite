@@ -7,21 +7,23 @@ from api.views.alert_views import AlertViewSet
 from api.views.event_views import EventViewSet
 from api.views.process_frame_view import process_frame
 from api.views.dashboard_view import dashboard_summary
+from api.test_ai import test_ai_connection
+from api.test_image import test_with_image
+from api.views.live_frame_view import process_live_frame
+from api.views.video_upload_view import upload_video
 
 router = DefaultRouter()
 router.register(r'cameras', CameraViewSet)
-router.register(r'alerts', AlertViewSet)
+router.register(r'alerts', AlertViewSet, basename='alert')
 router.register(r'events', EventViewSet)
-
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-
-    # REST API routes
     path('api/', include(router.urls)),
-
-    # AI endpoint (custom business logic)
     path('api/process-frame/', process_frame),
-
-     path('api/dashboard/summary/', dashboard_summary),
+    path('api/dashboard/summary/', dashboard_summary),
+    path('test-ai/', test_ai_connection),
+    path('api/test-image/', test_with_image),
+    path('api/process-live-frame/', process_live_frame),
+    path('api/upload-video/', upload_video),
 ]

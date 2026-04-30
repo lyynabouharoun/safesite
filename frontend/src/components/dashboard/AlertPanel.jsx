@@ -1,32 +1,30 @@
 import { useEffect, useRef } from "react";
 
 export default function AlertPanel({ alerts = [] }) {
-
     const prevCountRef = useRef(0);
-    const isFirstLoad = useRef(true); // 👈 ADD THIS
+    const isFirstLoad = useRef(true);
 
-   
-
-    const getStyle = (type) => {
-        switch (type) {
-            case "weapon":
-                return "bg-red-900/20 border-red-500 text-red-300";
-            case "suspicious_object":
-                return "bg-orange-900/20 border-orange-500 text-orange-300";
-            default:
-                return "bg-gray-900/20 border-gray-500 text-gray-300";
+    const getStyle = (alert) => {
+        // Based on confidence level
+        const confidence = alert.confidence || 0;
+        if (confidence > 0.7) {
+            return "bg-red-900/20 border-red-500 text-red-300";
+        } else if (confidence > 0.5) {
+            return "bg-orange-900/20 border-orange-500 text-orange-300";
         }
+        return "bg-yellow-900/20 border-yellow-500 text-yellow-300";
     };
 
-    const getLabel = (type) => {
-        switch (type) {
-            case "weapon":
-                return "🔴 Weapon Detected";
-            case "suspicious_object":
-                return "🟠 Suspicious Object";
-            default:
-                return "⚪ Unknown";
+    const getLabel = (alert) => {
+        const prediction = alert.prediction || alert.type;
+        const confidence = alert.confidence || 0;
+        
+        if (prediction === "Violence" || alert.type === "violence") {
+            return `🔴 VIOLENCE DETECTED - ${(confidence * 100).toFixed(1)}%`;
+        } else if (prediction === "violence" || alert.type === "suspicious") {
+            return `🟠 Suspicious Activity - ${(confidence * 100).toFixed(1)}%`;
         }
+        return `⚠️ Alert - ${(confidence * 100).toFixed(1)}%`;
     };
 
     return (
@@ -43,17 +41,14 @@ export default function AlertPanel({ alerts = [] }) {
 
             <div className="flex-1 overflow-y-auto space-y-2">
                 {alerts.map((alert, index) => {
-                    const type = alert.type || "unknown";
-                    const confidence = alert.confidence ?? 0;
-
                     return (
                         <div
                             key={alert.id || alert.timestamp || index}
-                            className={`p-3 rounded border backdrop-blur-md ${getStyle(type)}`}
+                            className={`p-3 rounded border backdrop-blur-md ${getStyle(alert)} animate-pulse`}
                         >
                             <div className="flex justify-between items-center">
                                 <span className="font-semibold">
-                                    {getLabel(type)}
+                                    {getLabel(alert)}
                                 </span>
 
                                 <span className="text-xs opacity-60">
@@ -66,7 +61,7 @@ export default function AlertPanel({ alerts = [] }) {
                             <div className="mt-1 text-sm">
                                 Confidence:{" "}
                                 <b>
-                                    {(confidence * 100).toFixed(1)}%
+                                    {((alert.confidence || 0) * 100).toFixed(1)}%
                                 </b>
                             </div>
 

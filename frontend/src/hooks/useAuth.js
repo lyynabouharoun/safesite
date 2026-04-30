@@ -1,8 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
 
-let globalUser = null;
-
 export default function useAuth() {
   const navigate = useNavigate();
   const [user, setUser] = useState(() => {
@@ -10,51 +8,77 @@ export default function useAuth() {
     return saved ? JSON.parse(saved) : null;
   });
 
-  const handleAuthSuccess = (user) => {
-  const safeUser = {
-    email: user.email,
-    name: user.name || user.email.split("@")[0],
+  const handleAuthSuccess = (user, tokens) => {
+    const safeUser = {
+      email: user.email,
+      name: user.name || user.email.split("@")[0],
+    };
+
+    localStorage.setItem("isAuthenticated", "true");
+    localStorage.setItem("user", JSON.stringify(safeUser));
+    localStorage.setItem("access_token", tokens.access);
+    localStorage.setItem("refresh_token", tokens.refresh);
+
+    navigate("/dashboard");
   };
-
-  localStorage.setItem("isAuthenticated", "true");
-  localStorage.setItem("user", JSON.stringify(safeUser));
-
-  navigate("/dashboard");
-};
 
   const login = async (email, password) => {
     try {
-      const response = await fetch("http://localhost:8002/api/auth/login/", {
+      const response = await fetch("http://localhost:8002/api/token/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ username: email, password }),
       });
 
       const data = await response.json();
 
-      if (data.status === "success") {
-        handleAuthSuccess({
-          email,
-          name: email.split("@")[0],
-        });
+      if (response.ok) {
+        handleAuthSuccess({ email }, { access: data.access, refresh: data.refresh });
+        return true;
       } else {
-        alert(data.message || "Invalid credentials");
+        throw new Error(data.detail || "Invalid credentials");
       }
     } catch (error) {
-      alert("Auth Service Offline");
+      console.error("Login error:", error);
+      throw error;
     }
   };
 
+  const getAccessToken = () => {
+    return localStorage.getItem("access_token");
+  };
+
+  const refreshToken = async () => {
+    const refresh = localStorage.getItem("refresh_token");
+    if (!refresh) return null;
+    
+    try {
+      const response = await fetch("http://localhost:8002/api/token/refresh/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh }),
+      });
+      
+      const data = await response.json();
+      if (response.ok) {
+        localStorage.setItem("access_token", data.access);
+        return data.access;
+      }
+    } catch (error) {
+      console.error("Token refresh failed");
+    }
+    return null;
+  };
+
   const getUser = () => {
-  const user = localStorage.getItem("user");
-  return user ? JSON.parse(user) : null;
-};
+    const user = localStorage.getItem("user");
+    return user ? JSON.parse(user) : null;
+  };
 
   const logout = () => {
     localStorage.clear();
-    globalUser = null;
     navigate("/login");
   };
 
-  return { login, handleAuthSuccess, getUser, logout };
+  return { login, handleAuthSuccess, getUser, logout, refreshToken, getAccessToken };
 }

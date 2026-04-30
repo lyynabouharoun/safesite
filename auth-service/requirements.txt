@@ -4,3 +4,11 @@ djangorestframework
 google-auth
 google-auth-httplib2
 google-auth-oauthlib
+Django>=4.2
+djangorestframework>=3.14
+djangorestframework-simplejwt>=5.3
+channels>=4.0.0
+channels-redis>=4.1.0
+redis>=5.0.0
+google-auth>=2.29.0
+requests>=2.31.0

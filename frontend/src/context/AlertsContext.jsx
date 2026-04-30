@@ -7,63 +7,87 @@ export function AlertsProvider({ children }) {
   const [alerts, setAlerts] = useState([]);
   const socketRef = useRef(null);
 
-  // 1️⃣ LOAD INITIAL DATA
+  // Get auth token
+  const getAuthToken = () => {
+    return localStorage.getItem("access_token");
+  };
+
+  // Fetch alerts from API with JWT
   const fetchAlerts = async () => {
     try {
-      const res = await axios.get("http://127.0.0.1:8000/api/alerts/");
-      const data = res.data.reverse();
-
+      const token = getAuthToken();
+      if (!token) {
+        console.log("No token found, skipping alerts fetch");
+        return;
+      }
+      
+      const res = await axios.get("http://127.0.0.1:8000/api/alerts/", {
+        headers: { 
+          Authorization: `Bearer ${token}`
+        }
+      });
+      const data = Array.isArray(res.data) ? res.data : [];
+      console.log("📊 Fetched alerts from API:", data.length);
       setAlerts(data);
     } catch (err) {
-      console.error(err);
+      if (err.response?.status === 401) {
+        console.error("Authentication failed, redirecting to login");
+        localStorage.clear();
+        window.location.href = '/login';
+      } else {
+        console.error("Error fetching alerts:", err);
+      }
     }
   };
 
- useEffect(() => {
-  fetchAlerts();
+  useEffect(() => {
+    // Fetch existing alerts on load
+    fetchAlerts();
 
-  // 2️⃣ WEBSOCKET
-  const socket = new WebSocket("ws://localhost:8000/ws/alerts/");
-  socketRef.current = socket;
+    // WebSocket connection for real-time alerts (no auth needed for WebSocket)
+    const socket = new WebSocket("ws://localhost:8000/ws/alerts/");
+    socketRef.current = socket;
 
-  // ✅ ADD THIS (debugging)
-  socket.onopen = () => {
-    console.log("✅ WebSocket connected");
-  };
+    socket.onopen = () => {
+      console.log("✅ WebSocket connected for alerts");
+    };
 
-  socket.onerror = (err) => {
-    console.error("❌ WebSocket error", err);
-  };
+    socket.onerror = (err) => {
+      console.error("❌ WebSocket error", err);
+    };
 
-  socket.onclose = () => {
-    console.log("❌ WebSocket closed");
-  };
+    socket.onclose = () => {
+      console.log("❌ WebSocket closed");
+    };
 
-  // existing message handler (keep it)
-  socket.onmessage = (event) => {
-    const alert = JSON.parse(event.data);
+    socket.onmessage = (event) => {
+      try {
+        const alert = JSON.parse(event.data);
+        console.log("📨 New alert received:", alert);
+        
+        // Add to alerts state
+        setAlerts((prev) => {
+          // Check if alert already exists
+          if (prev.some(a => a.id === alert.id)) return prev;
+          
+          // Play sound
+          const audio = new Audio("/alert.mp3");
+          audio.play().catch(e => console.log("Audio play failed:", e));
+          
+          // Add new alert at the beginning
+          return [alert, ...prev];
+        });
+      } catch (err) {
+        console.error("Error parsing WebSocket message:", err);
+      }
+    };
 
-    const alertKey =
-      alert.id ??
-      `${alert.type}-${alert.timestamp}-${alert.camera}-${alert.confidence}`;
-
-    setAlerts((prev) => {
-      const exists = prev.some((a) => a._key === alertKey);
-
-      if (exists) return prev;
-
-      const audio = new Audio("/alert.mp3");
-      audio.play().catch(() => {});
-
-      return [
-        { ...alert, _key: alertKey },
-        ...prev,
-      ].slice(0, 50);
-    });
-  };
-
-  return () => socket.close();
-}, []);
+    return () => {
+      if (socketRef.current) {
+        socketRef.current.close();
+      }
+    };
+  }, []);
 
   return (
     <AlertsContext.Provider value={{ alerts, setAlerts, fetchAlerts }}>

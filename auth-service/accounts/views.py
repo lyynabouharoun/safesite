@@ -2,19 +2,23 @@ from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
+from rest_framework_simplejwt.tokens import RefreshToken
 import json
-
-# Google imports (IMPORTANT)
 from google.oauth2 import id_token
 from google.auth.transport import requests
 
+def get_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return {
+        'access': str(refresh.access_token),
+        'refresh': str(refresh),
+    }
 
 @csrf_exempt
 def api_login(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
-
             email = data.get("email")
             password = data.get("password")
 
@@ -32,6 +36,8 @@ def api_login(request):
                     status=401,
                 )
 
+            tokens = get_tokens_for_user(user)
+
             return JsonResponse(
                 {
                     "status": "success",
@@ -40,6 +46,7 @@ def api_login(request):
                         "name": user.first_name,
                         "username": user.username,
                     },
+                    "tokens": tokens,
                 }
             )
 
@@ -54,7 +61,6 @@ def api_register(request):
     if request.method == "POST":
         try:
             data = json.loads(request.body)
-
             name = data.get("name")
             email = data.get("email")
             password = data.get("password")
@@ -90,6 +96,7 @@ def api_register(request):
                 {"status": "error", "message": str(e)}, status=500
             )
 
+
 @csrf_exempt
 def api_google_login(request):
     if request.method == 'POST':
@@ -116,13 +123,16 @@ def api_google_login(request):
                 }
             )
 
+            tokens = get_tokens_for_user(user)
+
             return JsonResponse({
-    "status": "success",
-    "user": {
-        "email": user.email,
-        "name": user.first_name or user.username
-    }
-})
+                "status": "success",
+                "user": {
+                    "email": user.email,
+                    "name": user.first_name or user.username
+                },
+                "tokens": tokens,
+            })
 
         except Exception as e:
             return JsonResponse({

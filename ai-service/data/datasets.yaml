@@ -1,0 +1,5 @@
+train: C:\Users\HP\Desktop\AP\safesite\ai-service\data\train
+val: C:\Users\HP\Desktop\AP\safesite\ai-service\data\test
+
+nc: 2
+names: ['Normal', 'Violence']
