@@ -1,26 +1,70 @@
 version: "3.9"
 
 services:
+  # ============================================
+  # SERVICE DISCOVERY (Consul)
+  # ============================================
+  consul:
+    image: hashicorp/consul:latest
+    container_name: safesite-consul
+    ports:
+      - "8500:8500"
+    command: agent -dev -client=0.0.0.0 -ui
+    networks:
+      - safesite_network
+    restart: always
+
+  # ============================================
+  # REVERSE PROXY (Traefik)
+  # ============================================
+  traefik:
+    image: traefik:v3.0
+    container_name: safesite-traefik
+    ports:
+      - "80:80"
+      - "8080:8080"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - safesite_network
+    restart: always
+
+  # ============================================
+  # REDIS
+  # ============================================
   redis:
     image: redis:7
     ports:
       - "6379:6379"
+    networks:
+      - safesite_network
     restart: always
 
+  # ============================================
+  # RABBITMQ
+  # ============================================
   rabbitmq:
     image: rabbitmq:3-management
     ports:
       - "5672:5672"
       - "15672:15672"
-    restart: always
+    networks:
+      - safesite_network
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: always
 
-  # --- NEW AUTH SERVICE ---
-  # --- NEW AUTH SERVICE ---
+  # ============================================
+  # AUTH SERVICE
+  # ============================================
   auth-service:
     build: ./auth-service
     ports:
@@ -28,21 +72,43 @@ services:
     environment:
       - GOOGLE_CLIENT_ID=491409934255-t4340hqkqos46hld52eftq9v7m0egp89.apps.googleusercontent.com
       - GOOGLE_CLIENT_SECRET=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
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.auth.rule=PathPrefix(`/api/auth/`)"
+      - "traefik.http.services.auth.loadbalancer.server.port=8002"
     volumes:
-      - ./auth-service:/app      # Add this so your code updates without rebuilding!
-      - ./backend:/db_sharing:rw 
+      - ./auth-service:/app
+      - ./backend:/db_sharing:rw
+    networks:
+      - safesite_network
     restart: always
 
+  # ============================================
+  # AI SERVICE
+  # ============================================
   ai-service:
     build: ./ai-service
     ports:
       - "8001:8001"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.ai.rule=PathPrefix(`/predict`)"
+      - "traefik.http.services.ai.loadbalancer.server.port=8001"
+    networks:
+      - safesite_network
     restart: always
 
+  # ============================================
+  # BACKEND API
+  # ============================================
   backend:
     build: ./backend
     ports:
       - "8000:8000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=PathPrefix(`/api/`)"
+      - "traefik.http.services.backend.loadbalancer.server.port=8000"
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -51,8 +117,13 @@ services:
       ai-service:
         condition: service_started
     command: daphne -b 0.0.0.0 -p 8000 core.asgi:application
+    networks:
+      - safesite_network
     restart: always
 
+  # ============================================
+  # CELERY WORKER
+  # ============================================
   celery:
     build: ./backend
     command: sh -c "sleep 10 && celery -A core worker -l info"
@@ -63,16 +134,56 @@ services:
         condition: service_healthy
       backend:
         condition: service_started
+    networks:
+      - safesite_network
     restart: always
 
+  # ============================================
+  # FRONTEND
+  # ============================================
   frontend:
     build: ./frontend
     ports:
       - "5173:5173"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
+      - "traefik.http.services.frontend.loadbalancer.server.port=5173"
     volumes:
       - ./frontend:/app
-      - /app/node_modules     # Keeps your local node_modules from conflicting
+      - /app/node_modules
     depends_on:
       - backend
       - auth-service
+    networks:
+      - safesite_network
     restart: always
+
+  # ============================================
+  # CONSUL SERVICE REGISTRAR
+  # ============================================
+  consul-registrar:
+    build: ./backend
+    container_name: safesite-consul-registrar
+    command: python consul/register.py
+    environment:
+      - CONSUL_HTTP_ADDR=consul:8500
+      - PYTHONPATH=/app
+    volumes:
+      - ./backend:/app
+    depends_on:
+      - consul
+      - backend
+      - auth-service
+      - ai-service
+      - frontend
+    networks:
+      - safesite_network
+    restart: "no"
+
+# ============================================
+# NETWORKS
+# ============================================
+networks:
+  safesite_network:
+    driver: bridge
