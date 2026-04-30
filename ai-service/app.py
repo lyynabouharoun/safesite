@@ -32,7 +32,7 @@ camera_buffers: Dict[int, deque] = {}
 SEQUENCE_LENGTH = 10
 FRAME_SIZE = (224, 224)
 CLASS_NAMES = ["Normal", "Violence"]
-ALERT_THRESHOLD = 0.7
+ALERT_THRESHOLD = 0.87
 
 
 class FrameRequest(BaseModel):

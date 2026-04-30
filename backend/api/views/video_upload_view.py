@@ -21,7 +21,6 @@ def upload_video(request):
         if not video_file:
             return Response({'error': 'No video file provided'}, status=400)
         
-        # Get or create camera
         camera, _ = Camera.objects.get_or_create(
             id=1, 
             defaults={'name': 'Upload Camera', 'location': 'Unknown', 'status': 'active'}
@@ -34,11 +33,11 @@ def upload_video(request):
         
         cap = cv2.VideoCapture(video_path)
         
-        MAX_FRAMES = 20
-        MIN_CONFIDENCE = 0.4
-        MIN_FRAMES_FOR_ALERT = 2
+        MAX_FRAMES = 30
+        MIN_CONFIDENCE = 0.80          # 80% minimum confidence
         
         violence_frames = 0
+        normal_frames = 0
         frame_count = 0
         all_confidences = []
         
@@ -57,15 +56,18 @@ def upload_video(request):
                 image_base64=frame_base64
             )
             
-            confidence = result.get('confidence', 0)
-            is_alert = result.get('alert', False)
-            all_confidences.append(confidence)
+            violence_prob = result.get('violence_probability', 0)
+            all_confidences.append(violence_prob)
             
-            print(f"Frame {frame_count}: {result.get('prediction')} - conf:{confidence:.2f} alert:{is_alert}")
+            print(f"Frame {frame_count}: violence_prob={violence_prob:.3f}")
             
-            if is_alert and confidence >= MIN_CONFIDENCE:
+            # Count violence and normal frames
+            if violence_prob >= MIN_CONFIDENCE:
                 violence_frames += 1
-                print(f"  ✅ COUNTED as violence frame!")
+                print(f"  🔴 VIOLENCE frame")
+            else:
+                normal_frames += 1
+                print(f"  🟢 NORMAL frame")
             
             frame_count += 1
         
@@ -73,24 +75,28 @@ def upload_video(request):
         os.unlink(video_path)
         
         avg_confidence = sum(all_confidences) / len(all_confidences) if all_confidences else 0
-        is_violence = violence_frames >= MIN_FRAMES_FOR_ALERT
         
-        print(f"Results: {violence_frames}/{frame_count} violence frames")
+        # 🎯 NEW LOGIC: More violence frames than normal frames
+        # AND at least 5 violence frames (minimum threshold)
+        MIN_VIOLENCE_FRAMES = 5
+        is_violence = violence_frames >= MIN_VIOLENCE_FRAMES and violence_frames > normal_frames
+        
+        print(f"Results: Violence={violence_frames}, Normal={normal_frames}, Total={frame_count}")
+        print(f"Violence frames > Normal frames: {violence_frames > normal_frames}")
         print(f"Average confidence: {avg_confidence:.3f}")
         print(f"Violence detected: {is_violence}")
         
         channel_layer = get_channel_layer()
         
         if is_violence:
-            # IMPORTANT: Save alert with the logged-in user
             alert = Alert.objects.create(
                 type='suspicious',
                 confidence=avg_confidence,
                 camera=camera,
-                user=request.user  # ✅ ADD THIS - assigns alert to logged-in user
+                user=request.user
             )
             
-            print(f"🚨 ALERT CREATED for user {request.user.username}! ID: {alert.id}")
+            print(f"🚨 ALERT CREATED! ID: {alert.id}")
             
             alert_ws = {
                 'id': alert.id,
@@ -100,10 +106,8 @@ def upload_video(request):
                 'camera': camera.id,
                 'type': 'violence',
                 'frames_detected': violence_frames,
-                'user_id': request.user.id
+                'normal_frames': normal_frames
             }
-            
-            print(f"📤 Sending WebSocket alert: {alert_ws}")
             
             async_to_sync(channel_layer.group_send)(
                 'alerts_group',
@@ -113,12 +117,13 @@ def upload_video(request):
                 }
             )
         else:
-            print(f"✅ No alert - only {violence_frames} frames detected")
+            print(f"✅ No alert - Violence={violence_frames}, Normal={normal_frames}")
         
         return Response({
             'status': 'completed',
             'total_frames': frame_count,
             'violence_frames': violence_frames,
+            'normal_frames': normal_frames,
             'avg_confidence': round(avg_confidence, 3),
             'alert_created': 1 if is_violence else 0,
             'alert_id': alert.id if is_violence else None
