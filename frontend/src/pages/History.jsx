@@ -16,7 +16,10 @@ export default function History() {
 
   const deleteLog = async (id) => {
     try {
-      await axios.delete(`http://127.0.0.1:8000/api/alerts/${id}/`);
+      const token = localStorage.getItem("access_token");
+      await axios.delete(`http://127.0.0.1:8000/api/alerts/${id}/`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
       setAlerts((prev) => prev.filter((a) => a.id !== id));
     } catch (err) {
       console.error(err);
@@ -25,8 +28,11 @@ export default function History() {
 
   const toggleArchive = async (alert) => {
     try {
+      const token = localStorage.getItem("access_token");
       await axios.patch(`http://127.0.0.1:8000/api/alerts/${alert.id}/`, {
         archived: !alert.archived,
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
       });
 
       setAlerts((prev) =>
@@ -65,12 +71,22 @@ export default function History() {
 
   const getTypeColor = (type) => {
     switch (type) {
-      case "weapon":
+      case "violence":
+      case "suspicious":
         return "text-red-400 bg-red-500/10";
-      case "person":
-        return "text-cyan bg-cyan/10";
       default:
         return "text-yellow-400 bg-yellow-500/10";
+    }
+  };
+
+  const getTypeLabel = (type) => {
+    switch (type) {
+      case "violence":
+        return "🔴 Violence";
+      case "suspicious":
+        return "🟠 Suspicious Activity";
+      default:
+        return "⚠️ Unknown";
     }
   };
 
@@ -99,8 +115,8 @@ export default function History() {
             className="bg-dark-card border border-dark-border px-3 py-2 rounded-lg text-xs text-cream"
           >
             <option value="all">All Types</option>
-            <option value="weapon">Weapon</option>
-            <option value="person">Person</option>
+            <option value="violence">🚨 Violence</option>
+            <option value="suspicious">⚠️ Suspicious</option>
           </select>
 
           <select
@@ -177,18 +193,18 @@ export default function History() {
                           alert.type
                         )}`}
                       >
-                        {alert.type}
-                      </span>
-                    </td>
-
-                    <td>
-                      <span className="px-2 py-1 rounded bg-dark-base text-cyan text-xs">
-                        {alert.confidence ?? "--"}
+                        {getTypeLabel(alert.type)}
                       </span>
                     </td>
 
                     <td className="text-cream/60">
-                      {alert.timestamp}
+                      <span className="px-2 py-1 rounded bg-dark-base text-cyan text-xs">
+                        {alert.confidence ? `${(alert.confidence * 100).toFixed(1)}%` : "--"}
+                      </span>
+                    </td>
+
+                    <td className="text-cream/60">
+                      {new Date(alert.timestamp).toLocaleString()}
                     </td>
 
                     <td className="text-right space-x-2">
