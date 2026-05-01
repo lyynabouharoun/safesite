@@ -1,4 +1,3 @@
-# Build stage
 FROM node:18
 
 WORKDIR /app

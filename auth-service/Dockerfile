@@ -5,11 +5,11 @@ ENV PYTHONUNBUFFERED 1
 
 WORKDIR /app
 
-# Create the sharing directory explicitly
 RUN mkdir -p /db_sharing && chmod 777 /db_sharing
 
 COPY requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install djangorestframework-simplejwt
 
 COPY . /app/
 

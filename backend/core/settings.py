@@ -163,3 +163,6 @@ SIMPLE_JWT = {
     'ALGORITHM': 'HS256',
     'SIGNING_KEY': SECRET_KEY,
 }
+
+
+ALLOWED_HOSTS = ['*']  # Allow all hosts (for development)

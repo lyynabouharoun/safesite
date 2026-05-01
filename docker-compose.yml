@@ -1,9 +1,6 @@
 version: "3.9"
 
 services:
-  # ============================================
-  # SERVICE DISCOVERY (Consul)
-  # ============================================
   consul:
     image: hashicorp/consul:latest
     container_name: safesite-consul
@@ -14,9 +11,6 @@ services:
       - safesite_network
     restart: always
 
-  # ============================================
-  # REVERSE PROXY (Traefik)
-  # ============================================
   traefik:
     image: traefik:v3.0
     container_name: safesite-traefik
@@ -34,9 +28,6 @@ services:
       - safesite_network
     restart: always
 
-  # ============================================
-  # REDIS
-  # ============================================
   redis:
     image: redis:7
     ports:
@@ -45,9 +36,6 @@ services:
       - safesite_network
     restart: always
 
-  # ============================================
-  # RABBITMQ
-  # ============================================
   rabbitmq:
     image: rabbitmq:3-management
     ports:
@@ -62,9 +50,6 @@ services:
       retries: 5
     restart: always
 
-  # ============================================
-  # AUTH SERVICE
-  # ============================================
   auth-service:
     build: ./auth-service
     ports:
@@ -76,16 +61,10 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.auth.rule=PathPrefix(`/api/auth/`)"
       - "traefik.http.services.auth.loadbalancer.server.port=8002"
-    volumes:
-      - ./auth-service:/app
-      - ./backend:/db_sharing:rw
     networks:
       - safesite_network
     restart: always
 
-  # ============================================
-  # AI SERVICE
-  # ============================================
   ai-service:
     build: ./ai-service
     ports:
@@ -98,9 +77,6 @@ services:
       - safesite_network
     restart: always
 
-  # ============================================
-  # BACKEND API
-  # ============================================
   backend:
     build: ./backend
     ports:
@@ -116,19 +92,15 @@ services:
         condition: service_started
       ai-service:
         condition: service_started
-    command: daphne -b 0.0.0.0 -p 8000 core.asgi:application
+    volumes:
+      - backend_data:/app/data
     networks:
       - safesite_network
     restart: always
 
-  # ============================================
-  # CELERY WORKER
-  # ============================================
   celery:
     build: ./backend
     command: sh -c "sleep 10 && celery -A core worker -l info"
-    volumes:
-      - ./backend:/app
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -138,9 +110,6 @@ services:
       - safesite_network
     restart: always
 
-  # ============================================
-  # FRONTEND
-  # ============================================
   frontend:
     build: ./frontend
     ports:
@@ -149,9 +118,6 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.frontend.rule=PathPrefix(`/`)"
       - "traefik.http.services.frontend.loadbalancer.server.port=5173"
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
     depends_on:
       - backend
       - auth-service
@@ -159,9 +125,6 @@ services:
       - safesite_network
     restart: always
 
-  # ============================================
-  # CONSUL SERVICE REGISTRAR
-  # ============================================
   consul-registrar:
     build: ./backend
     container_name: safesite-consul-registrar
@@ -181,9 +144,10 @@ services:
       - safesite_network
     restart: "no"
 
-# ============================================
-# NETWORKS
-# ============================================
 networks:
   safesite_network:
     driver: bridge
+
+# PERSISTENT VOLUME - Your alerts stay FOREVER!
+volumes:
+  backend_data:
